@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Auto Translator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Tajawal', Arial, sans-serif;
+            background: white;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .auto-translation {
+            position: absolute;
+            z-index: 10000;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 1.2;
+            text-align: center;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            word-wrap: break-word;
+            hyphens: auto;
+        }
+        
+        .translation-circular {
+            border-radius: 50%;
+            background: rgba(34, 197, 94, 0.95);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(34, 197, 94, 1);
+        }
+        
+        .translation-rectangular {
+            border-radius: 8px;
+            background: rgba(59, 130, 246, 0.95);
+            color: white;
+            padding: 6px 12px;
+            border: 1px solid rgba(59, 130, 246, 1);
+        }
+        
+        .translation-square {
+            border-radius: 6px;
+            background: rgba(168, 85, 247, 0.95);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(168, 85, 247, 1);
+        }
+        
+        .translation-bubble {
+            border-radius: 20px;
+            background: rgba(245, 101, 101, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border: 1px solid rgba(245, 101, 101, 1);
+            position: relative;
+        }
+        
+        .translation-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid rgba(245, 101, 101, 0.95);
+        }
+        
+        .translation-plain {
+            background: rgba(75, 85, 99, 0.95);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid rgba(75, 85, 99, 1);
+        }
+        
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 0;
+            z-index: 9999;
+            min-width: 200px;
+            transition: all 0.3s ease;
+            user-select: none;
+            overflow: hidden;
+        }
+        
+        .control-panel.minimized {
+            min-width: 50px;
+            transform: translateX(calc(100% - 60px));
+        }
+        
+        .control-panel.hidden {
+            display: none;
+        }
+        
+        .panel-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 16px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .control-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: white;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .control-btn:hover::before {
+            opacity: 1;
+        }
+        
+        .minimize-btn {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+        }
+        
+        .minimize-btn:hover {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+        }
+        
+        .minimize-btn:active {
+            transform: translateY(0);
+        }
+        
+        .close-btn {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+        
+        .close-btn:hover {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+        
+        .close-btn:active {
+            transform: translateY(0);
+        }
+        
+        .panel-content {
+            padding: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .panel-content.hidden {
+            display: none;
+        }
+        
+        .control-panel.hidden {
+            transform: translateX(calc(100% - 40px));
+        }
+        
+        .control-panel.minimized {
+            transform: translateX(calc(100% - 40px));
+        }
+        
+        .control-panel-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 12px;
+            cursor: move;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+        
+        .control-btn {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+        
+        .close-btn {
+            background: #ff5f57;
+            color: white;
+        }
+        
+        .close-btn:hover {
+            background: #ff3b30;
+            transform: scale(1.1);
+        }
+        
+        .minimize-btn {
+            background: #ffbd2e;
+            color: white;
+        }
+        
+        .minimize-btn:hover {
+            background: #ff9500;
+            transform: scale(1.1);
+        }
+        
+        .panel-content {
+            transition: all 0.3s ease;
+        }
+        
+        .panel-content.hidden {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .drag-handle {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            cursor: move;
+            background: transparent;
+        }
+        
+        .status-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(34, 197, 94, 0.9);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 25px;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 9998;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .status-indicator:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .translated-element {
+            position: relative !important;
+        }
+        
+        .translated-element * {
+            color: inherit !important;
+            text-shadow: inherit !important;
+        }
+        
+        .text-detection-highlight {
+            position: absolute;
+            border: 2px dashed rgba(34, 197, 94, 0.6);
+            background: rgba(34, 197, 94, 0.1);
+            pointer-events: none;
+            z-index: 9997;
+            transition: all 0.2s ease;
+        }
+        
+        .demo-content {
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .demo-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        
+        .circular-text {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #e3f2fd;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px;
+            border: 2px solid #2196f3;
+        }
+        
+        .rectangular-text {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #fff3e0;
+            border: 2px solid #ff9800;
+            border-radius: 8px;
+            margin: 10px;
+        }
+        
+        .square-text {
+            width: 100px;
+            height: 100px;
+            background: #f3e5f5;
+            border: 2px solid #9c27b0;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 10px;
+        }
+        
+        .bubble-text {
+            display: inline-block;
+            padding: 15px 25px;
+            background: #ffebee;
+            border: 2px solid #e91e63;
+            border-radius: 25px;
+            margin: 10px;
+            position: relative;
+        }
+        
+        .bubble-text::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 30px;
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 12px solid #ffebee;
+        }
+    </style>
+</head>
+<body>
+    <!-- Control Panel -->
+    <div class="control-panel" id="controlPanel">
+        <div class="panel-header" id="panelHeader">
+            <h3 class="panel-title">🤖 Smart Translator</h3>
+            <div class="control-buttons">
+                <button class="control-btn minimize-btn" id="minimizeBtn" onclick="toggleMinimize()" title="Minimize">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="minimizeIcon">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+                <button class="control-btn close-btn" id="closeBtn" onclick="closePanel()" title="Close">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <div class="panel-content" id="panelContent">
+            <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-gray-700">🤖 Auto Translation</span>
+                <button id="toggleBtn" onclick="toggleAutoTranslation()" class="w-14 h-7 bg-gradient-to-r from-green-500 to-green-600 rounded-full relative transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95">
+                    <div id="toggleCircle" class="w-6 h-6 bg-white rounded-full absolute top-0.5 right-0.5 transition-all duration-300 shadow-md flex items-center justify-center">
+                        <span id="toggleIcon" class="text-xs">✓</span>
+                    </div>
+                    <span id="toggleText" class="absolute left-2 top-1 text-xs font-bold text-white opacity-90">ON</span>
+                </button>
+            </div>
+            
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">From</label>
+                <select id="sourceLang" class="w-full text-xs p-2 border rounded">
+                    <option value="ar">🇸🇦 عربية</option>
+                    <option value="en">🇺🇸 إنجليزية</option>
+                    <option value="ja">🇯🇵 يابانية</option>
+                    <option value="ko">🇰🇷 كورية</option>
+                    <option value="zh">🇨🇳 صينية</option>
+                    <option value="fr">🇫🇷 فرنسية</option>
+                    <option value="de">🇩🇪 ألمانية</option>
+                    <option value="es">🇪🇸 إسبانية</option>
+                    <option value="it">🇮🇹 إيطالية</option>
+                    <option value="pt">🇵🇹 برتغالية</option>
+                    <option value="ru">🇷🇺 روسية</option>
+                    <option value="tr">🇹🇷 تركية</option>
+                    <option value="hi">🇮🇳 هندية</option>
+                    <option value="th">🇹🇭 تايلاندية</option>
+                    <option value="vi">🇻🇳 فيتنامية</option>
+                    <option value="id">🇮🇩 إندونيسية</option>
+                    <option value="ms">🇲🇾 ماليزية</option>
+                    <option value="nl">🇳🇱 هولندية</option>
+                    <option value="sv">🇸🇪 سويدية</option>
+                    <option value="no">🇳🇴 نرويجية</option>
+                    <option value="da">🇩🇰 دنماركية</option>
+                    <option value="fi">🇫🇮 فنلندية</option>
+                    <option value="pl">🇵🇱 بولندية</option>
+                    <option value="cs">🇨🇿 تشيكية</option>
+                    <option value="hu">🇭🇺 مجرية</option>
+                    <option value="ro">🇷🇴 رومانية</option>
+                    <option value="bg">🇧🇬 بلغارية</option>
+                    <option value="hr">🇭🇷 كرواتية</option>
+                    <option value="sk">🇸🇰 سلوفاكية</option>
+                    <option value="sl">🇸🇮 سلوفينية</option>
+                    <option value="et">🇪🇪 إستونية</option>
+                    <option value="lv">🇱🇻 لاتفية</option>
+                    <option value="lt">🇱🇹 ليتوانية</option>
+                    <option value="uk">🇺🇦 أوكرانية</option>
+                    <option value="be">🇧🇾 بيلاروسية</option>
+                    <option value="mk">🇲🇰 مقدونية</option>
+                    <option value="sq">🇦🇱 ألبانية</option>
+                    <option value="sr">🇷🇸 صربية</option>
+                    <option value="bs">🇧🇦 بوسنية</option>
+                    <option value="me">🇲🇪 جبل أسود</option>
+                    <option value="is">🇮🇸 آيسلندية</option>
+                    <option value="mt">🇲🇹 مالطية</option>
+                    <option value="cy">🏴󠁧󠁢󠁷󠁬󠁳󠁿 ويلزية</option>
+                    <option value="ga">🇮🇪 أيرلندية</option>
+                    <option value="gd">🏴󠁧󠁢󠁳󠁣󠁴󠁿 غيلية اسكتلندية</option>
+                    <option value="eu">🏴󠁥󠁳󠁰󠁶󠁿 باسكية</option>
+                    <option value="ca">🏴󠁥󠁳󠁣󠁴󠁿 كتالانية</option>
+                    <option value="gl">🏴󠁥󠁳󠁧󠁡󠁿 جاليسية</option>
+                    <option value="he">🇮🇱 عبرية</option>
+                    <option value="fa">🇮🇷 فارسية</option>
+                    <option value="ur">🇵🇰 أردية</option>
+                    <option value="bn">🇧🇩 بنغالية</option>
+                    <option value="ta">🇱🇰 تاميلية</option>
+                    <option value="te">🇮🇳 تيلوغو</option>
+                    <option value="ml">🇮🇳 مالايالام</option>
+                    <option value="kn">🇮🇳 كانادا</option>
+                    <option value="gu">🇮🇳 غوجاراتية</option>
+                    <option value="pa">🇮🇳 بنجابية</option>
+                    <option value="mr">🇮🇳 ماراثية</option>
+                    <option value="ne">🇳🇵 نيبالية</option>
+                    <option value="si">🇱🇰 سنهالية</option>
+                    <option value="my">🇲🇲 بورمية</option>
+                    <option value="km">🇰🇭 خمير</option>
+                    <option value="lo">🇱🇦 لاوية</option>
+                    <option value="ka">🇬🇪 جورجية</option>
+                    <option value="hy">🇦🇲 أرمنية</option>
+                    <option value="az">🇦🇿 أذربيجانية</option>
+                    <option value="kk">🇰🇿 كازاخية</option>
+                    <option value="ky">🇰🇬 قيرغيزية</option>
+                    <option value="uz">🇺🇿 أوزبكية</option>
+                    <option value="tg">🇹🇯 طاجيكية</option>
+                    <option value="tk">🇹🇲 تركمانية</option>
+                    <option value="mn">🇲🇳 منغولية</option>
+                    <option value="sw">🇰🇪 سواحيلية</option>
+                    <option value="am">🇪🇹 أمهرية</option>
+                    <option value="yo">🇳🇬 يوروبا</option>
+                    <option value="ig">🇳🇬 إيغبو</option>
+                    <option value="ha">🇳🇬 هوسا</option>
+                    <option value="zu">🇿🇦 زولو</option>
+                    <option value="af">🇿🇦 أفريكانية</option>
+                    <option value="xh">🇿🇦 خوسا</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-xs text-gray-600 mb-1">To</label>
+                <select id="targetLang" class="w-full text-xs p-2 border rounded">
+                    <option value="ar">🇸🇦 عربية</option>
+                    <option value="en">🇺🇸 إنجليزية</option>
+                    <option value="ja">🇯🇵 يابانية</option>
+                    <option value="ko">🇰🇷 كورية</option>
+                    <option value="zh">🇨🇳 صينية</option>
+                    <option value="fr">🇫🇷 فرنسية</option>
+                    <option value="de">🇩🇪 ألمانية</option>
+                    <option value="es">🇪🇸 إسبانية</option>
+                    <option value="it">🇮🇹 إيطالية</option>
+                    <option value="pt">🇵🇹 برتغالية</option>
+                    <option value="ru">🇷🇺 روسية</option>
+                    <option value="tr">🇹🇷 تركية</option>
+                    <option value="hi">🇮🇳 هندية</option>
+                    <option value="th">🇹🇭 تايلاندية</option>
+                    <option value="vi">🇻🇳 فيتنامية</option>
+                    <option value="id">🇮🇩 إندونيسية</option>
+                    <option value="ms">🇲🇾 ماليزية</option>
+                    <option value="nl">🇳🇱 هولندية</option>
+                    <option value="sv">🇸🇪 سويدية</option>
+                    <option value="no">🇳🇴 نرويجية</option>
+                    <option value="da">🇩🇰 دنماركية</option>
+                    <option value="fi">🇫🇮 فنلندية</option>
+                    <option value="pl">🇵🇱 بولندية</option>
+                    <option value="cs">🇨🇿 تشيكية</option>
+                    <option value="hu">🇭🇺 مجرية</option>
+                    <option value="ro">🇷🇴 رومانية</option>
+                    <option value="bg">🇧🇬 بلغارية</option>
+                    <option value="hr">🇭🇷 كرواتية</option>
+                    <option value="sk">🇸🇰 سلوفاكية</option>
+    
